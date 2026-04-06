@@ -1,4 +1,4 @@
-#include "../common.hlsli"
+#include "output.hlsli"
 
 Texture2D<float4> tLinearImage : register(t0);
 
@@ -23,11 +23,7 @@ float4 main(
   linear float2 TEXCOORD : TEXCOORD
 ) : SV_Target {
   if (TONE_MAP_TYPE != 0.f) {
-    float3 bt709Color = tLinearImage.SampleLevel(PointBorder, TEXCOORD.xy, 0.0f).rgb;
-    float3 bt2020Color = max(0.f, renodx::color::bt2020::from::BT709(bt709Color));
-    float3 pqColor = renodx::color::pq::Encode(bt2020Color, RENODX_GRAPHICS_WHITE_NITS);
-
-    return float4(pqColor, 1.f);
+    return GenerateOutput(tLinearImage, PointBorder, TEXCOORD);
   } else {
     float4 SV_Target;
     float4 _9 = tLinearImage.SampleLevel(PointBorder, float2(TEXCOORD.x, TEXCOORD.y), 0.0f);

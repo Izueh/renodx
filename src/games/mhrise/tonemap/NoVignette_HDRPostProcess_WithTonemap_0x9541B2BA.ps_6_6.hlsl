@@ -1,4 +1,6 @@
-#include "../common.hlsli"
+#define SHADER_HASH 0x9541B2BA
+
+#include "tonemap.hlsli"
 
 Texture2D<float4> RE_POSTPROCESS_Color : register(t0);
 
@@ -8,11 +10,11 @@ struct RadialBlurComputeResult {
 
 StructuredBuffer<RadialBlurComputeResult> ComputeResultSRV : register(t1);
 
-Texture3D<float4> tTextureMap0 : register(t2);
+// Texture3D<float4> tTextureMap0 : register(t2);
 
-Texture3D<float4> tTextureMap1 : register(t3);
+// Texture3D<float4> tTextureMap1 : register(t3);
 
-Texture3D<float4> tTextureMap2 : register(t4);
+// Texture3D<float4> tTextureMap2 : register(t4);
 
 Texture2D<float4> ImagePlameBase : register(t5);
 
@@ -40,19 +42,19 @@ cbuffer SceneInfo : register(b0) {
   uint SceneInfo_Reserve : packoffset(c032.w);
 };
 
-cbuffer TonemapParam : register(b1) {
-  float contrast : packoffset(c000.x);
-  float linearBegin : packoffset(c000.y);
-  float linearLength : packoffset(c000.z);
-  float toe : packoffset(c000.w);
-  float maxNit : packoffset(c001.x);
-  float linearStart : packoffset(c001.y);
-  float displayMaxNitSubContrastFactor : packoffset(c001.z);
-  float contrastFactor : packoffset(c001.w);
-  float mulLinearStartContrastFactor : packoffset(c002.x);
-  float invLinearBegin : packoffset(c002.y);
-  float madLinearStartContrastFactor : packoffset(c002.z);
-};
+// cbuffer TonemapParam : register(b1) {
+//   float contrast : packoffset(c000.x);
+//   float linearBegin : packoffset(c000.y);
+//   float linearLength : packoffset(c000.z);
+//   float toe : packoffset(c000.w);
+//   float maxNit : packoffset(c001.x);
+//   float linearStart : packoffset(c001.y);
+//   float displayMaxNitSubContrastFactor : packoffset(c001.z);
+//   float contrastFactor : packoffset(c001.w);
+//   float mulLinearStartContrastFactor : packoffset(c002.x);
+//   float invLinearBegin : packoffset(c002.y);
+//   float madLinearStartContrastFactor : packoffset(c002.z);
+// };
 
 cbuffer LensDistortionParam : register(b2) {
   float fDistortionCoef : packoffset(c000.x);
@@ -91,13 +93,13 @@ cbuffer FilmGrainParam : register(b5) {
   float fReverseNoiseSize : packoffset(c001.w);
 };
 
-cbuffer ColorCorrectTexture : register(b6) {
-  float fTextureSize : packoffset(c000.x);
-  float fTextureBlendRate : packoffset(c000.y);
-  float fTextureBlendRate2 : packoffset(c000.z);
-  float fTextureInverseSize : packoffset(c000.w);
-  row_major float4x4 fColorMatrix : packoffset(c001.x);
-};
+// cbuffer ColorCorrectTexture : register(b6) {
+//   float fTextureSize : packoffset(c000.x);
+//   float fTextureBlendRate : packoffset(c000.y);
+//   float fTextureBlendRate2 : packoffset(c000.z);
+//   float fTextureInverseSize : packoffset(c000.w);
+//   row_major float4x4 fColorMatrix : packoffset(c001.x);
+// };
 
 cbuffer ColorDeficientTable : register(b7) {
   float4 cvdR : packoffset(c000.x);
@@ -112,15 +114,15 @@ cbuffer ImagePlaneParam : register(b8) {
   uint Blend_Type : packoffset(c001.z);
 };
 
-cbuffer CBControl : register(b9) {
-  uint cPassEnabled : packoffset(c000.x);
-};
+// cbuffer CBControl : register(b9) {
+//   uint cPassEnabled : packoffset(c000.x);
+// };
 
 SamplerState BilinearClamp : register(s5, space32);
 
 SamplerState BilinearBorder : register(s6, space32);
 
-SamplerState TrilinearClamp : register(s9, space32);
+// SamplerState TrilinearClamp : register(s9, space32);
 
 float4 main(
   noperspective float4 SV_Position : SV_Position,
@@ -146,10 +148,10 @@ float4 main(
   float3 untonemapped = 0;  // Original HDR before any processing
   float3 hdrColor = 0;      // HDR color to preserve and restore
 
-  float tonemap_toe = toe;
+  float tonemap_toe = original_toe;
   float tonemap_highlight_contrast = contrast;
-  float max_nit = maxNit;
-  float linear_start = linearStart;
+  float max_nit = original_maxNit;
+  float linear_start = original_linearStart;
   if (TONE_MAP_TYPE != 0)
   {
     if (RENODX_TONE_MAP_TOE_ADJUSTMENT_TYPE != 0)
@@ -492,6 +494,10 @@ float4 main(
     _1134 = _1033;
     _1135 = _1034;
   // }
+#if 1
+    ApplyColorGrading(_1133, _1134, _1135, 
+                      _1351, _1352, _1353);
+#else
   if (!(((uint)(cPassEnabled) & 4) == 0)) {
     if (TONE_MAP_TYPE != 0)
     {
@@ -645,6 +651,7 @@ float4 main(
     _1352 = _1134;
     _1353 = _1135;
   }
+#endif
   if (!(((uint)(cPassEnabled) & 8) == 0)) {
     _1388 = saturate(((cvdR.x * _1351) + (cvdR.y * _1352)) + (cvdR.z * _1353));
     _1389 = saturate(((cvdG.x * _1351) + (cvdG.y * _1352)) + (cvdG.z * _1353));

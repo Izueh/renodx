@@ -1,4 +1,6 @@
-#include "../common.hlsli"
+#define SHADER_HASH 0xA60CA61D
+
+#include "tonemap.hlsli"
 
 Texture2D<float4> RE_POSTPROCESS_Color : register(t0);
 
@@ -8,11 +10,11 @@ struct RadialBlurComputeResult {
 
 StructuredBuffer<RadialBlurComputeResult> ComputeResultSRV : register(t1);
 
-Texture3D<float4> tTextureMap0 : register(t2);
+// Texture3D<float4> tTextureMap0 : register(t2);
 
-Texture3D<float4> tTextureMap1 : register(t3);
+// Texture3D<float4> tTextureMap1 : register(t3);
 
-Texture3D<float4> tTextureMap2 : register(t4);
+// Texture3D<float4> tTextureMap2 : register(t4);
 
 Texture2D<float4> ImagePlameBase : register(t5);
 
@@ -46,19 +48,19 @@ cbuffer CameraKerare : register(b1) {
   float kerare_brightness : packoffset(c000.z);
 };
 
-cbuffer TonemapParam : register(b2) {
-  float contrast : packoffset(c000.x);
-  float linearBegin : packoffset(c000.y);
-  float linearLength : packoffset(c000.z);
-  float toe : packoffset(c000.w);
-  float maxNit : packoffset(c001.x);
-  float linearStart : packoffset(c001.y);
-  float displaymax_nitSubContrastFactor : packoffset(c001.z);
-  float contrastFactor : packoffset(c001.w);
-  float mullinear_startContrastFactor : packoffset(c002.x);
-  float invLinearBegin : packoffset(c002.y);
-  float madlinear_startContrastFactor : packoffset(c002.z);
-};
+// cbuffer TonemapParam : register(b2) {
+//   float contrast : packoffset(c000.x);
+//   float linearBegin : packoffset(c000.y);
+//   float linearLength : packoffset(c000.z);
+//   float toe : packoffset(c000.w);
+//   float maxNit : packoffset(c001.x);
+//   float linearStart : packoffset(c001.y);
+//   float displayMaxNitSubContrastFactor : packoffset(c001.z);
+//   float contrastFactor : packoffset(c001.w);
+//   float mulLinearStartContrastFactor : packoffset(c002.x);
+//   float invLinearBegin : packoffset(c002.y);
+//   float madLinearStartContrastFactor : packoffset(c002.z);
+// };
 
 cbuffer LensDistortionParam : register(b3) {
   float fDistortionCoef : packoffset(c000.x);
@@ -97,13 +99,13 @@ cbuffer FilmGrainParam : register(b6) {
   float fReverseNoiseSize : packoffset(c001.w);
 };
 
-cbuffer ColorCorrectTexture : register(b7) {
-  float fTextureSize : packoffset(c000.x);
-  float fTextureBlendRate : packoffset(c000.y);
-  float fTextureBlendRate2 : packoffset(c000.z);
-  float fTextureInverseSize : packoffset(c000.w);
-  row_major float4x4 fColorMatrix : packoffset(c001.x);
-};
+// cbuffer ColorCorrectTexture : register(b7) {
+//   float fTextureSize : packoffset(c000.x);
+//   float fTextureBlendRate : packoffset(c000.y);
+//   float fTextureBlendRate2 : packoffset(c000.z);
+//   float fTextureInverseSize : packoffset(c000.w);
+//   row_major float4x4 fColorMatrix : packoffset(c001.x);
+// };
 
 cbuffer ColorDeficientTable : register(b8) {
   float4 cvdR : packoffset(c000.x);
@@ -118,15 +120,15 @@ cbuffer ImagePlaneParam : register(b9) {
   uint Blend_Type : packoffset(c001.z);
 };
 
-cbuffer CBControl : register(b10) {
-  uint cPassEnabled : packoffset(c000.x);
-};
+// cbuffer CBControl : register(b10) {
+//   uint cPassEnabled : packoffset(c000.x);
+// };
 
 SamplerState BilinearClamp : register(s5, space32);
 
 SamplerState BilinearBorder : register(s6, space32);
 
-SamplerState TrilinearClamp : register(s9, space32);
+// SamplerState TrilinearClamp : register(s9, space32);
 
 float4 main(
   noperspective float4 SV_Position : SV_Position,
@@ -160,10 +162,10 @@ float4 main(
   float3 untonemapped = 0;   // Original HDR before any processing
   float3 hdrColor = 0;       // HDR color to preserve and restore
 
-  float tonemap_toe = toe;
+  float tonemap_toe = original_toe;
   float tonemap_highlight_contrast = contrast;
-  float max_nit = maxNit;
-  float linear_start = linearStart;
+  float max_nit = original_maxNit;
+  float linear_start = original_linearStart;
   if (TONE_MAP_TYPE != 0)
   {
     if (RENODX_TONE_MAP_TOE_ADJUSTMENT_TYPE != 0)
@@ -173,8 +175,8 @@ float4 main(
       tonemap_toe = RENODX_TONE_MAP_SHADOW_TOE;
     }
     tonemap_highlight_contrast = RENODX_TONE_MAP_HIGHLIGHT_CONTRAST;
-    max_nit = 100.f;
-    linear_start = 100.f;
+    max_nit = renodx::math::FLT16_MAX;
+    linear_start = renodx::math::FLT16_MAX;
   }
 
   float _505;
@@ -236,8 +238,8 @@ float4 main(
     float _119 = select((_111 >= linearBegin), 0.0f, (1.0f - ((_112 * _112) * (3.0f - (_112 * 2.0f)))));
     float _121 = select((_111 < linear_start), 0.0f, 1.0f);
     float _126 = (pow(_112, tonemap_toe));
-    float _129 = ((tonemap_highlight_contrast * _111) + madlinear_startContrastFactor) * ((1.0f - _121) - _119);
-    float _135 = (max_nit - (exp2((contrastFactor * _111) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _121;
+    float _129 = ((tonemap_highlight_contrast * _111) + madLinearStartContrastFactor) * ((1.0f - _121) - _119);
+    float _135 = (max_nit - (exp2((contrastFactor * _111) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _121;
     if ((uint)(aberrationEnable) == 0) {
       float _139 = _109.y * _70;
       float _140 = _109.z * _70;
@@ -248,8 +250,8 @@ float4 main(
       float _159 = select((_139 < linear_start), 0.0f, 1.0f);
       float _160 = select((_140 < linear_start), 0.0f, 1.0f);
       _505 = ((_129 + ((_126 * _119) * linearBegin)) + _135);
-      _506 = (((((tonemap_highlight_contrast * _139) + madlinear_startContrastFactor) * ((1.0f - _159) - _154)) + (((pow(_141, tonemap_toe)) * _154) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _139) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _159));
-      _507 = (((((tonemap_highlight_contrast * _140) + madlinear_startContrastFactor) * ((1.0f - _160) - _156)) + (((pow(_147, tonemap_toe)) * _156) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _140) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _160));
+      _506 = (((((tonemap_highlight_contrast * _139) + madLinearStartContrastFactor) * ((1.0f - _159) - _154)) + (((pow(_141, tonemap_toe)) * _154) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _139) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _159));
+      _507 = (((((tonemap_highlight_contrast * _140) + madLinearStartContrastFactor) * ((1.0f - _160) - _156)) + (((pow(_147, tonemap_toe)) * _156) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _140) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _160));
       _508 = fDistortionCoef;
       _509 = 0.0f;
       _510 = 0.0f;
@@ -273,8 +275,8 @@ float4 main(
       float _263 = select((_255 >= linearBegin), 0.0f, (1.0f - ((_256 * _256) * (3.0f - (_256 * 2.0f)))));
       float _265 = select((_255 < linear_start), 0.0f, 1.0f);
       _505 = ((_129 + ((linearBegin * _126) * _119)) + _135);
-      _506 = (((((tonemap_highlight_contrast * _224) + madlinear_startContrastFactor) * ((1.0f - _234) - _232)) + ((linearBegin * (pow(_225, tonemap_toe))) * _232)) + ((max_nit - (exp2((contrastFactor * _224) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _234));
-      _507 = (((((tonemap_highlight_contrast * _255) + madlinear_startContrastFactor) * ((1.0f - _265) - _263)) + ((linearBegin * (pow(_256, tonemap_toe))) * _263)) + ((max_nit - (exp2((contrastFactor * _255) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _265));
+      _506 = (((((tonemap_highlight_contrast * _224) + madLinearStartContrastFactor) * ((1.0f - _234) - _232)) + ((linearBegin * (pow(_225, tonemap_toe))) * _232)) + ((max_nit - (exp2((contrastFactor * _224) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _234));
+      _507 = (((((tonemap_highlight_contrast * _255) + madLinearStartContrastFactor) * ((1.0f - _265) - _263)) + ((linearBegin * (pow(_256, tonemap_toe))) * _263)) + ((max_nit - (exp2((contrastFactor * _255) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _265));
       _508 = fDistortionCoef;
       _509 = 0.0f;
       _510 = 0.0f;
@@ -302,9 +304,9 @@ float4 main(
       float _353 = select((_323 < linear_start), 0.0f, 1.0f);
       float _354 = select((_324 < linear_start), 0.0f, 1.0f);
       float _355 = select((_325 < linear_start), 0.0f, 1.0f);
-      _505 = (((((tonemap_highlight_contrast * _323) + madlinear_startContrastFactor) * ((1.0f - _353) - _345)) + (((pow(_326, tonemap_toe)) * _345) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _323) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _353));
-      _506 = (((((tonemap_highlight_contrast * _324) + madlinear_startContrastFactor) * ((1.0f - _354) - _347)) + (((pow(_332, tonemap_toe)) * _347) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _324) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _354));
-      _507 = (((((tonemap_highlight_contrast * _325) + madlinear_startContrastFactor) * ((1.0f - _355) - _349)) + (((pow(_338, tonemap_toe)) * _349) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _325) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _355));
+      _505 = (((((tonemap_highlight_contrast * _323) + madLinearStartContrastFactor) * ((1.0f - _353) - _345)) + (((pow(_326, tonemap_toe)) * _345) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _323) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _353));
+      _506 = (((((tonemap_highlight_contrast * _324) + madLinearStartContrastFactor) * ((1.0f - _354) - _347)) + (((pow(_332, tonemap_toe)) * _347) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _324) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _354));
+      _507 = (((((tonemap_highlight_contrast * _325) + madLinearStartContrastFactor) * ((1.0f - _355) - _349)) + (((pow(_338, tonemap_toe)) * _349) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _325) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _355));
       _508 = 0.0f;
       _509 = fOptimizedParam.x;
       _510 = fOptimizedParam.y;
@@ -325,9 +327,9 @@ float4 main(
       float _447 = select((_417 < linear_start), 0.0f, 1.0f);
       float _448 = select((_418 < linear_start), 0.0f, 1.0f);
       float _449 = select((_419 < linear_start), 0.0f, 1.0f);
-      _505 = (((((tonemap_highlight_contrast * _417) + madlinear_startContrastFactor) * ((1.0f - _447) - _439)) + (((pow(_420, tonemap_toe)) * _439) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _417) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _447));
-      _506 = (((((tonemap_highlight_contrast * _418) + madlinear_startContrastFactor) * ((1.0f - _448) - _441)) + (((pow(_426, tonemap_toe)) * _441) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _418) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _448));
-      _507 = (((((tonemap_highlight_contrast * _419) + madlinear_startContrastFactor) * ((1.0f - _449) - _443)) + (((pow(_432, tonemap_toe)) * _443) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _419) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _449));
+      _505 = (((((tonemap_highlight_contrast * _417) + madLinearStartContrastFactor) * ((1.0f - _447) - _439)) + (((pow(_420, tonemap_toe)) * _439) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _417) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _447));
+      _506 = (((((tonemap_highlight_contrast * _418) + madLinearStartContrastFactor) * ((1.0f - _448) - _441)) + (((pow(_426, tonemap_toe)) * _441) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _418) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _448));
+      _507 = (((((tonemap_highlight_contrast * _419) + madLinearStartContrastFactor) * ((1.0f - _449) - _443)) + (((pow(_432, tonemap_toe)) * _443) * linearBegin)) + ((max_nit - (exp2((contrastFactor * _419) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _449));
       _508 = 0.0f;
       _509 = 0.0f;
       _510 = 0.0f;
@@ -387,9 +389,9 @@ float4 main(
         float _702 = select((_672 < linear_start), 0.0f, 1.0f);
         float _703 = select((_673 < linear_start), 0.0f, 1.0f);
         float _704 = select((_674 < linear_start), 0.0f, 1.0f);
-        _1019 = (((((_694 * (pow(_675, tonemap_toe))) * linearBegin) + _633) + (((tonemap_highlight_contrast * _672) + madlinear_startContrastFactor) * ((1.0f - _702) - _694))) + ((max_nit - (exp2((contrastFactor * _672) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _702));
-        _1020 = ((((((pow(_681, tonemap_toe)) * _696) * linearBegin) + _635) + (((tonemap_highlight_contrast * _673) + madlinear_startContrastFactor) * ((1.0f - _703) - _696))) + ((max_nit - (exp2((contrastFactor * _673) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _703));
-        _1021 = ((((((pow(_687, tonemap_toe)) * _698) * linearBegin) + _637) + (((tonemap_highlight_contrast * _674) + madlinear_startContrastFactor) * ((1.0f - _704) - _698))) + ((max_nit - (exp2((contrastFactor * _674) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _704));
+        _1019 = (((((_694 * (pow(_675, tonemap_toe))) * linearBegin) + _633) + (((tonemap_highlight_contrast * _672) + madLinearStartContrastFactor) * ((1.0f - _702) - _694))) + ((max_nit - (exp2((contrastFactor * _672) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _702));
+        _1020 = ((((((pow(_681, tonemap_toe)) * _696) * linearBegin) + _635) + (((tonemap_highlight_contrast * _673) + madLinearStartContrastFactor) * ((1.0f - _703) - _696))) + ((max_nit - (exp2((contrastFactor * _673) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _703));
+        _1021 = ((((((pow(_687, tonemap_toe)) * _698) * linearBegin) + _637) + (((tonemap_highlight_contrast * _674) + madLinearStartContrastFactor) * ((1.0f - _704) - _698))) + ((max_nit - (exp2((contrastFactor * _674) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _704));
       } else {
         float _763 = cbRadialScreenPos.x + 0.5f;
         float _764 = _763 + _601;
@@ -421,9 +423,9 @@ float4 main(
           float _855 = select((_825 < linear_start), 0.0f, 1.0f);
           float _856 = select((_826 < linear_start), 0.0f, 1.0f);
           float _857 = select((_827 < linear_start), 0.0f, 1.0f);
-          _1019 = (((((_847 * (pow(_828, tonemap_toe))) * linearBegin) + _633) + (((tonemap_highlight_contrast * _825) + madlinear_startContrastFactor) * ((1.0f - _855) - _847))) + ((max_nit - (exp2((contrastFactor * _825) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _855));
-          _1020 = ((((((pow(_834, tonemap_toe)) * _849) * linearBegin) + _635) + (((tonemap_highlight_contrast * _826) + madlinear_startContrastFactor) * ((1.0f - _856) - _849))) + ((max_nit - (exp2((contrastFactor * _826) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _856));
-          _1021 = ((((((pow(_840, tonemap_toe)) * _851) * linearBegin) + _637) + (((tonemap_highlight_contrast * _827) + madlinear_startContrastFactor) * ((1.0f - _857) - _851))) + ((max_nit - (exp2((contrastFactor * _827) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _857));
+          _1019 = (((((_847 * (pow(_828, tonemap_toe))) * linearBegin) + _633) + (((tonemap_highlight_contrast * _825) + madLinearStartContrastFactor) * ((1.0f - _855) - _847))) + ((max_nit - (exp2((contrastFactor * _825) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _855));
+          _1020 = ((((((pow(_834, tonemap_toe)) * _849) * linearBegin) + _635) + (((tonemap_highlight_contrast * _826) + madLinearStartContrastFactor) * ((1.0f - _856) - _849))) + ((max_nit - (exp2((contrastFactor * _826) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _856));
+          _1021 = ((((((pow(_840, tonemap_toe)) * _851) * linearBegin) + _637) + (((tonemap_highlight_contrast * _827) + madLinearStartContrastFactor) * ((1.0f - _857) - _851))) + ((max_nit - (exp2((contrastFactor * _827) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _857));
         } else {
           float4 _917 = RE_POSTPROCESS_Color.SampleLevel(BilinearClamp, float2(_764, _766), 0.0f);
           float4 _921 = RE_POSTPROCESS_Color.SampleLevel(BilinearClamp, float2(_767, _768), 0.0f);
@@ -439,9 +441,9 @@ float4 main(
           float _958 = select((_928 < linear_start), 0.0f, 1.0f);
           float _959 = select((_929 < linear_start), 0.0f, 1.0f);
           float _960 = select((_930 < linear_start), 0.0f, 1.0f);
-          _1019 = (((((_950 * (pow(_931, tonemap_toe))) * linearBegin) + _633) + (((tonemap_highlight_contrast * _928) + madlinear_startContrastFactor) * ((1.0f - _958) - _950))) + ((max_nit - (exp2((contrastFactor * _928) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _958));
-          _1020 = ((((((pow(_937, tonemap_toe)) * _952) * linearBegin) + _635) + (((tonemap_highlight_contrast * _929) + madlinear_startContrastFactor) * ((1.0f - _959) - _952))) + ((max_nit - (exp2((contrastFactor * _929) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _959));
-          _1021 = ((((((pow(_943, tonemap_toe)) * _954) * linearBegin) + _637) + (((tonemap_highlight_contrast * _930) + madlinear_startContrastFactor) * ((1.0f - _960) - _954))) + ((max_nit - (exp2((contrastFactor * _930) + mullinear_startContrastFactor) * displaymax_nitSubContrastFactor)) * _960));
+          _1019 = (((((_950 * (pow(_931, tonemap_toe))) * linearBegin) + _633) + (((tonemap_highlight_contrast * _928) + madLinearStartContrastFactor) * ((1.0f - _958) - _950))) + ((max_nit - (exp2((contrastFactor * _928) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _958));
+          _1020 = ((((((pow(_937, tonemap_toe)) * _952) * linearBegin) + _635) + (((tonemap_highlight_contrast * _929) + madLinearStartContrastFactor) * ((1.0f - _959) - _952))) + ((max_nit - (exp2((contrastFactor * _929) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _959));
+          _1021 = ((((((pow(_943, tonemap_toe)) * _954) * linearBegin) + _637) + (((tonemap_highlight_contrast * _930) + madLinearStartContrastFactor) * ((1.0f - _960) - _954))) + ((max_nit - (exp2((contrastFactor * _930) + mulLinearStartContrastFactor) * displayMaxNitSubContrastFactor)) * _960));
         }
       }
       if (cbRadialMaskRate.x > 0.0f) {
@@ -507,6 +509,10 @@ float4 main(
     _1162 = _1061;
     _1163 = _1062;
   // }
+#if 1
+    ApplyColorGrading(_1161, _1162, _1163,
+                      _1379, _1380, _1381);
+#else
   if (!(((uint)(cPassEnabled) & 4) == 0)) {
     if (TONE_MAP_TYPE != 0) {
 
@@ -663,6 +669,7 @@ float4 main(
     _1380 = _1162;
     _1381 = _1163;
   }
+#endif
   if (!(((uint)(cPassEnabled) & 8) == 0)) {
     _1416 = saturate(((cvdR.x * _1379) + (cvdR.y * _1380)) + (cvdR.z * _1381));
     _1417 = saturate(((cvdG.x * _1379) + (cvdG.y * _1380)) + (cvdG.z * _1381));
